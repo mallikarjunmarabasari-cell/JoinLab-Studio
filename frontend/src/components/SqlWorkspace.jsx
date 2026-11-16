@@ -1,11 +1,12 @@
 // Import React state and the database service
 import { useState } from 'react'
-import { executeQuery } from '../lib/pglite.js'
+// import { executeQuery } from '../lib/pglite.js'
+import { executeQuery, getDatabase } from '../lib/pglite.js'
 import './SqlWorkspace.css'
 
 import CodeMirror from '@uiw/react-codemirror'
 // import { sql, PostgreSQL } from '@codemirror/lang-sql' //eslint error
-import { sql as sqlLanguage, PostgreSQL } from '@codemirror/lang-sql' 
+import { sql as sqlLanguage, PostgreSQL } from '@codemirror/lang-sql'
 
 import './SqlWorkspace.css'
 // Add a helper to format database values
@@ -18,7 +19,50 @@ function formatCellValue(value) {
   }
 
   return String(value)
-} function SqlWorkspace() {
+}
+
+function formatDuration(durationMs) {
+  if (durationMs < 1) {
+    return `${durationMs.toFixed(2)} ms`
+  }
+
+  if (durationMs < 1000) {
+    return `${durationMs.toFixed(1)} ms`
+  }
+
+  return `${(durationMs / 1000).toFixed(2)} s`
+}
+
+// result-formatting function
+function formatQuerySummary(result) {
+  const command = result.command || 'QUERY'
+  const returnedRows = result.rows?.length ?? 0
+
+  const modifyingCommands = [
+    'INSERT',
+    'UPDATE',
+    'DELETE',
+    'MERGE',
+  ]
+
+  if (command === 'SELECT') {
+    return `${command} completed · ${returnedRows} row(s) returned`
+  }
+
+  if (modifyingCommands.includes(command)) {
+    const affectedRows = result.affectedRows ?? result.rowCount ?? 0
+
+    const returnedMessage = returnedRows > 0
+      ? ` · ${returnedRows} row(s) returned`
+      : ''
+
+    return `${command} completed · ${affectedRows} row(s) affected${returnedMessage}`
+  }
+
+  return `${command} completed`
+}
+
+function SqlWorkspace() {
   // SQL editor state
   const [sql, setSql] = useState(
     "SELECT 1 AS result, 'JoinLab PostgreSQL' AS message;"
@@ -29,19 +73,44 @@ function formatCellValue(value) {
   const [queryError, setQueryError] = useState('')
   const [isRunning, setIsRunning] = useState(false)
 
+  const [executionDuration, setExecutionDuration] = useState(null)
+  const [executionPhase, setExecutionPhase] = useState('idle')
+
   // Run SQL against PGlite
   async function handleRunQuery() {
     setIsRunning(true)
     setQueryError('')
     setQueryResult(null)
+    setExecutionDuration(null)
+    setExecutionPhase('initializing')
+
+    let startedAt = null
 
     try {
+      // Ensure PostgreSQL is initialized before measuring query time
+      await getDatabase()
+
+      setExecutionPhase('executing')
+
+      // Start measuring query execution
+      startedAt = performance.now()
+
       const result = await executeQuery(sql)
 
       setQueryResult(result)
+
     } catch (error) {
-      setQueryError(error.message)
+      setQueryError(
+        error instanceof Error ? error.message : String(error)
+      )
+
     } finally {
+      // Record duration for both successful and failed SQL queries
+      if (startedAt !== null) {
+        setExecutionDuration(performance.now() - startedAt)
+      }
+
+      setExecutionPhase('idle')
       setIsRunning(false)
     }
   }
@@ -141,7 +210,15 @@ function formatCellValue(value) {
 
               <div className="editor-toolbar">
                 <span>
-                  {isRunning ? 'Executing query...' : 'Ready to execute'}
+                  {executionPhase === 'initializing' && 'Initializing PostgreSQL...'}
+                  {executionPhase === 'executing' && 'Executing SQL...'}
+                  {executionPhase === 'idle' && (
+                    queryError
+                      ? 'Execution failed'
+                      : queryResult
+                        ? 'Execution completed'
+                        : 'Ready to execute'
+                  )}
                 </span>
 
                 <button
@@ -170,9 +247,13 @@ function formatCellValue(value) {
                 <div className="query-output">
 
                   <p className="query-status">
-                    {queryResult.command || 'Query'} completed ·{' '}
-                    {queryResult.rows.length} row(s) returned
+                    {formatQuerySummary(queryResult)}
                   </p>
+                  {executionDuration !== null && (
+                    <p className="query-duration">
+                      Execution time: {formatDuration(executionDuration)}
+                    </p>
+                  )}
 
                   {queryResult.fields.length > 0 ? (
                     <div className="results-table-wrapper">
