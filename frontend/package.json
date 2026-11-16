@@ -10,7 +10,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@codemirror/lang-sql": "^6.10.0",
     "@electric-sql/pglite": "^0.5.16",
+    "@uiw/react-codemirror": "^4.25.12",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },

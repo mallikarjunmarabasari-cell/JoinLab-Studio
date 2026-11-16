@@ -3,6 +3,10 @@ import { useState } from 'react'
 import { executeQuery } from '../lib/pglite.js'
 import './SqlWorkspace.css'
 
+import CodeMirror from '@uiw/react-codemirror'
+// import { sql, PostgreSQL } from '@codemirror/lang-sql' //eslint error
+import { sql as sqlLanguage, PostgreSQL } from '@codemirror/lang-sql' 
+
 import './SqlWorkspace.css'
 // Add a helper to format database values
 // Place this function above function SqlWorkspace()
@@ -14,7 +18,7 @@ function formatCellValue(value) {
   }
 
   return String(value)
-}function SqlWorkspace() {
+} function SqlWorkspace() {
   // SQL editor state
   const [sql, setSql] = useState(
     "SELECT 1 AS result, 'JoinLab PostgreSQL' AS message;"
@@ -122,13 +126,18 @@ function formatCellValue(value) {
                 <span>PostgreSQL</span>
               </div>
 
-              <textarea
-                className="sql-editor"
-                aria-label="SQL query editor"
-                spellCheck={false}
-                value={sql}
-                onChange={(event) => setSql(event.target.value)}
-              />
+              <div className="sql-editor-container">
+                <CodeMirror
+                  value={sql}
+                  height="180px"
+                  theme="dark"
+                  extensions={[
+                    sqlLanguage({ dialect: PostgreSQL })
+                  ]}
+                  onChange={(value) => setSql(value)}
+                  basicSetup
+                />
+              </div>
 
               <div className="editor-toolbar">
                 <span>
