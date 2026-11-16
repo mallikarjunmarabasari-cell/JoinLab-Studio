@@ -8,11 +8,19 @@ import CodeMirror from '@uiw/react-codemirror'
 // import { sql, PostgreSQL } from '@codemirror/lang-sql' //eslint error
 import { sql as sqlLanguage, PostgreSQL } from '@codemirror/lang-sql'
 
+import { loadEmployeePracticeDataset } from '../lib/datasetService.js'
+
 import './SqlWorkspace.css'
 // Add a helper to format database values
 // Place this function above function SqlWorkspace()
 function formatCellValue(value) {
   if (value === null) return 'NULL'
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime())
+      ? 'Invalid Date'
+      : value.toISOString().slice(0, 10)
+  }
 
   if (typeof value === 'object') {
     return JSON.stringify(value)
@@ -76,6 +84,9 @@ function SqlWorkspace() {
   const [executionDuration, setExecutionDuration] = useState(null)
   const [executionPhase, setExecutionPhase] = useState('idle')
 
+  const [isLoadingDataset, setIsLoadingDataset] = useState(false)
+  const [datasetMessage, setDatasetMessage] = useState('')
+
   // Run SQL against PGlite
   async function handleRunQuery() {
     setIsRunning(true)
@@ -112,6 +123,26 @@ function SqlWorkspace() {
 
       setExecutionPhase('idle')
       setIsRunning(false)
+    }
+  }
+
+  async function handleLoadEmployeeDataset() {
+    setIsLoadingDataset(true)
+    setDatasetMessage('')
+
+    try {
+      const { employeeCount } = await loadEmployeePracticeDataset()
+
+      setDatasetMessage(
+        `Employee Practice dataset loaded: ${employeeCount} employees.`
+      )
+    } catch (error) {
+      setDatasetMessage(
+        `Dataset loading failed: ${error instanceof Error ? error.message : String(error)
+        }`
+      )
+    } finally {
+      setIsLoadingDataset(false)
     }
   }
 
@@ -182,6 +213,22 @@ function SqlWorkspace() {
               <div className="panel-heading">
                 <h3>Database Explorer</h3>
               </div>
+              <button
+                type="button"
+                className="dataset-load-button"
+                onClick={handleLoadEmployeeDataset}
+                disabled={isLoadingDataset}
+              >
+                {isLoadingDataset
+                  ? 'Loading dataset...'
+                  : 'Load Employee Practice Dataset'}
+              </button>
+
+              {datasetMessage && (
+                <p className="dataset-message" role="status">
+                  {datasetMessage}
+                </p>
+              )}
 
               <p className="empty-state">
                 Select a dataset to explore its tables.

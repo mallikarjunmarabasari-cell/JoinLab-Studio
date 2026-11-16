@@ -71,3 +71,24 @@
     color: var(--color-muted);
     font-size: 13px;
 }
+
+.dataset-load-button {
+  margin: 12px 0;
+  padding: 9px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-panel-hover);
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.dataset-load-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dataset-message {
+  margin: 8px 0;
+  color: var(--color-success);
+  font-size: 13px;
+}
