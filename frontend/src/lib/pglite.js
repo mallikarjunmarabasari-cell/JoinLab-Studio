@@ -1,19 +1,22 @@
-import { PGlite } from '@electric-sql/pglite' //Imports the database engine installed through npm.
+import { PGlite } from '@electric-sql/pglite'
+
+// Persistent database identity for the current local workspace
+const DATABASE_NAME = 'idb://joinlab-studio-v0.2' //The idb:// prefix tells PGlite to use its IndexedDB filesystem.
 
 // Shared database initialization promise
-let databasePromise = null //Database initialization: We maintain a reference to the database initialization promise.
+let databasePromise = null
 
 // Initialize the database only once
-export function getDatabase() { //The first call initializes the database. Subsequent calls reuse the same promise instead of creating another database.
+export function getDatabase() {
   if (!databasePromise) {
-    databasePromise = PGlite.create() //Creates the database and returns a promise that resolves when initialization is complete. This is the recommended initialization approach in the PGlite API
+    databasePromise = PGlite.create(DATABASE_NAME)
   }
 
   return databasePromise
 }
 
 // Execute SQL against the shared database
-export async function executeQuery(sql) { //Execute SQL: This waits for database initialization, then executes the supplied SQL.
+export async function executeQuery(sql) {
   const database = await getDatabase()
 
   return database.query(sql)
