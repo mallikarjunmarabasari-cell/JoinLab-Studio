@@ -10,7 +10,11 @@ import { sql as sqlLanguage, PostgreSQL } from '@codemirror/lang-sql'
 
 import { loadEmployeePracticeDataset } from '../lib/datasetService.js'
 
-import { getDatabaseTables } from '../lib/schemaService.js'
+import {
+  getDatabaseTables,
+  getTableColumns,
+  getTableConstraints,
+} from '../lib/schemaService.js'
 
 import './SqlWorkspace.css'
 // Add a helper to format database values
@@ -72,6 +76,21 @@ function formatQuerySummary(result) {
   return `${command} completed`
 }
 
+function formatColumnType(column) {
+  if (column.character_maximum_length !== null) {
+    return `${column.data_type}(${column.character_maximum_length})`
+  }
+
+  if (
+    column.data_type === 'numeric' &&
+    column.numeric_precision !== null
+  ) {
+    return `numeric(${column.numeric_precision},${column.numeric_scale ?? 0})`
+  }
+
+  return column.data_type
+}
+
 function SqlWorkspace() {
   // SQL editor state
   const [sql, setSql] = useState(
@@ -92,6 +111,13 @@ function SqlWorkspace() {
   const [tables, setTables] = useState([])
   const [isRefreshingTables, setIsRefreshingTables] = useState(false)
   const [schemaError, setSchemaError] = useState('')
+
+  const [selectedTable, setSelectedTable] = useState(null)
+  const [columns, setColumns] = useState([])
+  const [isLoadingColumns, setIsLoadingColumns] = useState(false)
+  const [columnError, setColumnError] = useState('')
+
+  const [constraints, setConstraints] = useState([])
 
   // Run SQL against PGlite
   async function handleRunQuery() {
@@ -167,6 +193,30 @@ function SqlWorkspace() {
       )
     } finally {
       setIsRefreshingTables(false)
+    }
+  }
+
+  async function handleSelectTable(tableName) {
+    setSelectedTable(tableName)
+    setColumns([])
+    setConstraints([])
+    setColumnError('')
+    setIsLoadingColumns(true)
+
+    try {
+      const [columnDetails, constraintDetails] = await Promise.all([
+        getTableColumns(tableName),
+        getTableConstraints(tableName),
+      ])
+
+      setColumns(columnDetails)
+      setConstraints(constraintDetails)
+    } catch (error) {
+      setColumnError(
+        error instanceof Error ? error.message : String(error)
+      )
+    } finally {
+      setIsLoadingColumns(false)
     }
   }
 
@@ -268,10 +318,18 @@ function SqlWorkspace() {
                 )}
 
                 {tables.length > 0 ? (
-                  <ul>
+                  <ul className="database-table-list">
                     {tables.map((tableName) => (
                       <li key={tableName}>
-                        <span>▤</span> {tableName}
+                        <button
+                          type="button"
+                          className={`table-select-button ${selectedTable === tableName ? 'active' : ''
+                            }`}
+                          onClick={() => handleSelectTable(tableName)}
+                        >
+                          <span aria-hidden="true">▤</span>
+                          {tableName}
+                        </button>
                       </li>
                     ))}
                   </ul>
@@ -279,6 +337,84 @@ function SqlWorkspace() {
                   <p className="empty-state">
                     No tables found. Load a dataset first.
                   </p>
+                )}
+                {selectedTable && (
+                  <>
+                    {/* Table columns */}
+                    <section className="table-structure">
+                      <h4>{selectedTable} — Columns</h4>
+
+                      {isLoadingColumns ? (
+                        <p>Loading columns...</p>
+                      ) : columnError ? (
+                        <p className="query-error" role="alert">
+                          {columnError}
+                        </p>
+                      ) : columns.length > 0 ? (
+                        <div className="results-table-wrapper">
+                          <table className="query-results-table">
+                            <thead>
+                              <tr>
+                                <th>Column</th>
+                                <th>Data type</th>
+                                <th>Nullable</th>
+                              </tr>
+                            </thead>
+
+                            <tbody>
+                              {columns.map((column) => (
+                                <tr key={column.column_name}>
+                                  <td>{column.column_name}</td>
+                                  <td>{formatColumnType(column)}</td>
+                                  <td>
+                                    {column.is_nullable === 'YES' ? 'Yes' : 'No'}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <p>No column information available.</p>
+                      )}
+                    </section>
+
+                    {/* Table constraints */}
+                    <section className="table-constraints">
+                      <h4>Constraints</h4>
+
+                      {constraints.length > 0 ? (
+                        <ul>
+                          {constraints.map((constraint) => (
+                            <li key={constraint.constraint_name}>
+                              <strong>{constraint.constraint_type}</strong>
+
+                              <span>{constraint.constraint_name}</span>
+
+                              {constraint.columns?.length > 0 && (
+                                <p>
+                                  Columns: {constraint.columns.join(', ')}
+                                </p>
+                              )}
+
+                              {constraint.constraint_type === 'FOREIGN KEY' &&
+                                constraint.referenced_columns?.length > 0 && (
+                                  <p>
+                                    References: {constraint.referenced_columns.join(', ')}
+                                  </p>
+                                )}
+
+                              {constraint.check_clause && (
+                                <p>Check: {constraint.check_clause}</p>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p>No constraints found.</p>
+                      )}
+                    </section>
+                  </>
                 )}
               </div>
 
