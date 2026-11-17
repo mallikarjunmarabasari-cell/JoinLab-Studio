@@ -10,6 +10,8 @@ import { sql as sqlLanguage, PostgreSQL } from '@codemirror/lang-sql'
 
 import { loadEmployeePracticeDataset } from '../lib/datasetService.js'
 
+import { getDatabaseTables } from '../lib/schemaService.js'
+
 import './SqlWorkspace.css'
 // Add a helper to format database values
 // Place this function above function SqlWorkspace()
@@ -87,6 +89,10 @@ function SqlWorkspace() {
   const [isLoadingDataset, setIsLoadingDataset] = useState(false)
   const [datasetMessage, setDatasetMessage] = useState('')
 
+  const [tables, setTables] = useState([])
+  const [isRefreshingTables, setIsRefreshingTables] = useState(false)
+  const [schemaError, setSchemaError] = useState('')
+
   // Run SQL against PGlite
   async function handleRunQuery() {
     setIsRunning(true)
@@ -133,6 +139,8 @@ function SqlWorkspace() {
     try {
       const { employeeCount } = await loadEmployeePracticeDataset()
 
+      await handleRefreshTables()
+
       setDatasetMessage(
         `Employee Practice dataset loaded: ${employeeCount} employees.`
       )
@@ -143,6 +151,22 @@ function SqlWorkspace() {
       )
     } finally {
       setIsLoadingDataset(false)
+    }
+  }
+
+  async function handleRefreshTables() {
+    setIsRefreshingTables(true)
+    setSchemaError('')
+
+    try {
+      const tableNames = await getDatabaseTables()
+      setTables(tableNames)
+    } catch (error) {
+      setSchemaError(
+        error instanceof Error ? error.message : String(error)
+      )
+    } finally {
+      setIsRefreshingTables(false)
     }
   }
 
@@ -223,6 +247,40 @@ function SqlWorkspace() {
                   ? 'Loading dataset...'
                   : 'Load Employee Practice Dataset'}
               </button>
+
+              <div className="database-tables">
+                <div className="panel-heading">
+                  <h4>Tables</h4>
+
+                  <button
+                    type="button"
+                    onClick={handleRefreshTables}
+                    disabled={isRefreshingTables}
+                  >
+                    {isRefreshingTables ? 'Refreshing...' : 'Refresh'}
+                  </button>
+                </div>
+
+                {schemaError && (
+                  <p className="query-error" role="alert">
+                    {schemaError}
+                  </p>
+                )}
+
+                {tables.length > 0 ? (
+                  <ul>
+                    {tables.map((tableName) => (
+                      <li key={tableName}>
+                        <span>▤</span> {tableName}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="empty-state">
+                    No tables found. Load a dataset first.
+                  </p>
+                )}
+              </div>
 
               {datasetMessage && (
                 <p className="dataset-message" role="status">

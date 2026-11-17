@@ -92,3 +92,23 @@
   color: var(--color-success);
   font-size: 13px;
 }
+
+.database-tables {
+  margin-top: 20px;
+}
+
+.database-tables ul {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+}
+
+.database-tables li {
+  padding: 10px;
+  margin-bottom: 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
