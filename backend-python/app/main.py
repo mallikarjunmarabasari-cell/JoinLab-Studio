@@ -1,5 +1,8 @@
 from fastapi import FastAPI
 
+from app.api.router import api_router
+
+
 app = FastAPI(
     title="JoinLab Studio API",
     description="Python backend for JoinLab Studio",
@@ -7,9 +10,4 @@ app = FastAPI(
 )
 
 
-@app.get("/api/health")
-def health_check():
-    return {
-        "status": "ok",
-        "message": "JoinLab Python API is running"
-    }
+app.include_router(api_router)
