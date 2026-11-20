@@ -1,4 +1,11 @@
 # Suppose someone clones JoinLab Studio from GitHub. They can recreate the Python environment using:
 # python -m pip install -r requirements.txt
+
+# API framework and server
 fastapi==0.165.0
 uvicorn[standard]==0.54.0
+
+# Data validation and configuration
+pydantic==2.14.4
+pydantic-settings==2.16.3
+python-dotenv==1.2.4

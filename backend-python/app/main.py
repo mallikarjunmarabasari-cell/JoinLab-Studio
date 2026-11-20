@@ -1,12 +1,13 @@
 from fastapi import FastAPI
 
 from app.api.router import api_router
+from app.core.config import settings
 
 
 app = FastAPI(
-    title="JoinLab Studio API",
-    description="Python backend for JoinLab Studio",
-    version="0.3.1"
+    title=settings.app_name,
+    description=settings.app_description,
+    version=settings.app_version
 )
 
 
