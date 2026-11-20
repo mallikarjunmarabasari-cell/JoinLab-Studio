@@ -27,3 +27,16 @@ Thumbs.db
 
 # Editor
 .idea/
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# Python testing and caching
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
