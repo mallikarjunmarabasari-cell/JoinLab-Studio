@@ -91,7 +91,12 @@ function formatColumnType(column) {
   return column.data_type
 }
 
-function SqlWorkspace() {
+function SqlWorkspace({
+  user,
+  onSignOut,
+  isSigningOut,
+  signOutError,
+}) {
   // SQL editor state
   const [sql, setSql] = useState(
     "SELECT 1 AS result, 'JoinLab PostgreSQL' AS message;"
@@ -234,10 +239,37 @@ function SqlWorkspace() {
           </div>
         </div>
 
-        <div className="connection-status">
-          <span className="status-dot"></span>
-          PostgreSQL · In-browser sandbox
+        <div className="topbar-right">
+
+          <div className="connection-status">
+            <span className="status-dot"></span>
+            PostgreSQL · In-browser sandbox
+          </div>
+
+          <div className="account-controls">
+            <div className="account-identity">
+              <span className="account-label">SIGNED IN AS</span>
+              <span className="account-email" title={user?.email || ''}>
+                {user?.email || 'Authenticated user'}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              className="sign-out-button"
+              onClick={onSignOut}
+              disabled={isSigningOut}
+            >
+              {isSigningOut ? 'Signing out...' : 'Sign out'}
+            </button>
+          </div>
+
         </div>
+        {signOutError && (
+          <p className="sign-out-error" role="alert">
+            Sign-out failed: {signOutError}
+          </p>
+        )}
       </header>
 
       <div className="workspace-layout">

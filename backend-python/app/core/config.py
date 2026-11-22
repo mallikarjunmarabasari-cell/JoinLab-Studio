@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     app_description: str = "Python backend for JoinLab Studio"
     app_version: str = "0.3.1"
 
+    supabase_url: str
+    supabase_publishable_key: str
+
     model_config = SettingsConfigDict(
         env_file=ENV_FILE,
         env_file_encoding="utf-8",
