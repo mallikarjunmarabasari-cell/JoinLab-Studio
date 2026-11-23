@@ -1,5 +1,5 @@
 // Import React state and the database service
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 // import { executeQuery } from '../lib/pglite.js'
 import { executeQuery, getDatabase } from '../lib/pglite.js'
 import './SqlWorkspace.css'
@@ -15,6 +15,13 @@ import {
   getTableColumns,
   getTableConstraints,
 } from '../lib/schemaService.js'
+
+import {
+  getSavedScripts,
+  createSavedScript,
+  updateSavedScript,
+  deleteSavedScript,
+} from '../lib/savedScriptsService.js'
 
 // Add a helper to format database values
 // Place this function above function SqlWorkspace()
@@ -123,6 +130,51 @@ function SqlWorkspace({
 
   const [constraints, setConstraints] = useState([])
 
+  // Saved SQL scripts state
+  const [savedScripts, setSavedScripts] = useState([])
+  const [scriptName, setScriptName] = useState('')
+  const [selectedScriptId, setSelectedScriptId] = useState(null)
+
+  const [isLoadingScripts, setIsLoadingScripts] = useState(false)
+  const [isSavingScript, setIsSavingScript] = useState(false)
+  const [isDeletingScriptId, setIsDeletingScriptId] = useState(null)
+
+  const [scriptMessage, setScriptMessage] = useState('')
+  const [scriptError, setScriptError] = useState('')
+
+  // Load cloud-saved scripts when the authenticated account opens SQLDesk.
+  useEffect(() => {
+    let isActive = true
+
+    async function loadInitialScripts() {
+      setIsLoadingScripts(true)
+      setScriptError('')
+
+      try {
+        const scripts = await getSavedScripts()
+
+        if (isActive) {
+          setSavedScripts(scripts)
+        }
+      } catch (error) {
+        if (isActive) {
+          setScriptError(
+            error instanceof Error ? error.message : String(error)
+          )
+        }
+      } finally {
+        if (isActive) {
+          setIsLoadingScripts(false)
+        }
+      }
+    }
+
+    loadInitialScripts()
+
+    return () => {
+      isActive = false
+    }
+  }, [user.id])
   // Run SQL against PGlite
   async function handleRunQuery() {
     setIsRunning(true)
@@ -221,6 +273,150 @@ function SqlWorkspace({
       )
     } finally {
       setIsLoadingColumns(false)
+    }
+  }
+
+  // Manually refresh the saved scripts list.
+  async function handleRefreshSavedScripts() {
+    setIsLoadingScripts(true)
+    setScriptError('')
+    setScriptMessage('')
+
+    try {
+      const scripts = await getSavedScripts()
+      setSavedScripts(scripts)
+    } catch (error) {
+      setScriptError(
+        error instanceof Error ? error.message : String(error)
+      )
+    } finally {
+      setIsLoadingScripts(false)
+    }
+  }
+
+  // Save the current editor contents as a new cloud script.
+  async function handleSaveNewScript() {
+    setIsSavingScript(true)
+    setScriptError('')
+    setScriptMessage('')
+
+    try {
+      const savedScript = await createSavedScript(scriptName, sql)
+
+      setSavedScripts((currentScripts) => [
+        savedScript,
+        ...currentScripts.filter((script) => script.id !== savedScript.id),
+      ])
+
+      setSelectedScriptId(savedScript.id)
+      setScriptName(savedScript.name)
+      setScriptMessage(`Saved "${savedScript.name}".`)
+    } catch (error) {
+      setScriptError(
+        error instanceof Error ? error.message : String(error)
+      )
+    } finally {
+      setIsSavingScript(false)
+    }
+  }
+
+  // Update the currently selected saved script.
+  async function handleUpdateSavedScript() {
+    if (!selectedScriptId) {
+      setScriptError('Load a saved script before updating it.')
+      return
+    }
+
+    setIsSavingScript(true)
+    setScriptError('')
+    setScriptMessage('')
+
+    try {
+      const updatedScript = await updateSavedScript(
+        selectedScriptId,
+        scriptName,
+        sql
+      )
+
+      setSavedScripts((currentScripts) =>
+        currentScripts
+          .map((script) =>
+            script.id === updatedScript.id ? updatedScript : script
+          )
+          .sort(
+            (a, b) =>
+              new Date(b.updated_at).getTime() -
+              new Date(a.updated_at).getTime()
+          )
+      )
+
+      setScriptMessage(`Updated "${updatedScript.name}".`)
+    } catch (error) {
+      setScriptError(
+        error instanceof Error ? error.message : String(error)
+      )
+    } finally {
+      setIsSavingScript(false)
+    }
+  }
+
+  // Load a saved script into CodeMirror without executing it.
+  function handleLoadSavedScript(script) {
+    setSql(script.sql_text)
+    setScriptName(script.name)
+    setSelectedScriptId(script.id)
+
+    setQueryResult(null)
+    setQueryError('')
+    setExecutionDuration(null)
+    setExecutionPhase('idle')
+
+    setScriptError('')
+    setScriptMessage(`Loaded "${script.name}" into the editor.`)
+  }
+
+  // Prepare the editor contents to be saved as a different script.
+  function handleStartNewScript() {
+    setSelectedScriptId(null)
+    setScriptName('')
+    setScriptError('')
+    setScriptMessage('Ready to save a new script.')
+  }
+
+  // Delete a saved script after confirmation.
+  async function handleDeleteSavedScript(scriptId) {
+    const script = savedScripts.find((item) => item.id === scriptId)
+
+    if (!script) return
+
+    const confirmed = window.confirm(
+      `Delete "${script.name}"? This action cannot be undone.`
+    )
+
+    if (!confirmed) return
+
+    setIsDeletingScriptId(scriptId)
+    setScriptError('')
+    setScriptMessage('')
+
+    try {
+      await deleteSavedScript(scriptId)
+
+      setSavedScripts((currentScripts) =>
+        currentScripts.filter((item) => item.id !== scriptId)
+      )
+
+      if (selectedScriptId === scriptId) {
+        setSelectedScriptId(null)
+      }
+
+      setScriptMessage(`Deleted "${script.name}".`)
+    } catch (error) {
+      setScriptError(
+        error instanceof Error ? error.message : String(error)
+      )
+    } finally {
+      setIsDeletingScriptId(null)
     }
   }
 
@@ -501,6 +697,121 @@ function SqlWorkspace({
                   {isRunning ? 'Running...' : 'Run Query'}
                 </button>
               </div>
+              {/* Saved SQL Scripts */}
+              <section className="saved-scripts-section">
+                <div className="saved-scripts-header">
+                  <h4>Saved SQL Scripts</h4>
+
+                  <button
+                    type="button"
+                    onClick={handleRefreshSavedScripts}
+                    disabled={isLoadingScripts}
+                  >
+                    {isLoadingScripts ? 'Refreshing...' : 'Refresh'}
+                  </button>
+                </div>
+
+                <div className="saved-script-form">
+                  <label htmlFor="saved-script-name">
+                    Script name
+                  </label>
+
+                  <input
+                    id="saved-script-name"
+                    type="text"
+                    value={scriptName}
+                    onChange={(event) => setScriptName(event.target.value)}
+                    placeholder="e.g. Employee salary analysis"
+                    maxLength={100}
+                    disabled={isSavingScript}
+                  />
+
+                  <div className="saved-script-actions">
+                    <button
+                      type="button"
+                      onClick={handleSaveNewScript}
+                      disabled={isSavingScript || !scriptName.trim() || !sql.trim()}
+                    >
+                      {isSavingScript ? 'Saving...' : 'Save as New'}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleUpdateSavedScript}
+                      disabled={
+                        !selectedScriptId ||
+                        isSavingScript ||
+                        !scriptName.trim() ||
+                        !sql.trim()
+                      }
+                    >
+                      Update Selected
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleStartNewScript}
+                      disabled={isSavingScript}
+                    >
+                      New Script
+                    </button>
+                  </div>
+                </div>
+
+                {scriptError && (
+                  <p className="query-error" role="alert">
+                    {scriptError}
+                  </p>
+                )}
+
+                {scriptMessage && (
+                  <p className="dataset-message" role="status">
+                    {scriptMessage}
+                  </p>
+                )}
+
+                <div className="saved-scripts-list">
+                  {isLoadingScripts ? (
+                    <p className="empty-state">Loading saved scripts...</p>
+                  ) : savedScripts.length > 0 ? (
+                    savedScripts.map((script) => (
+                      <div className="saved-script-item" key={script.id}>
+                        <div className="saved-script-details">
+                          <strong>{script.name}</strong>
+                          <span>
+                            Updated {new Date(script.updated_at).toLocaleString()}
+                          </span>
+                        </div>
+
+                        <div className="saved-script-item-actions">
+                          <button
+                            type="button"
+                            onClick={() => handleLoadSavedScript(script)}
+                            aria-pressed={selectedScriptId === script.id}
+                          >
+                            Load
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteSavedScript(script.id)}
+                            disabled={
+                              isDeletingScriptId !== null ||
+                              isSavingScript
+                            }
+                          >
+                            {isDeletingScriptId === script.id ? 'Deleting...' : 'Delete'}
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="empty-state">
+                      No saved scripts yet. Save your first SQL query above.
+                    </p>
+                  )}
+                </div>
+              </section>
             </section>
 
             {/* Query results */}
