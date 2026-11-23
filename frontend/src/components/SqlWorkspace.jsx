@@ -16,7 +16,6 @@ import {
   getTableConstraints,
 } from '../lib/schemaService.js'
 
-import './SqlWorkspace.css'
 // Add a helper to format database values
 // Place this function above function SqlWorkspace()
 function formatCellValue(value) {
@@ -136,14 +135,14 @@ function SqlWorkspace({
 
     try {
       // Ensure PostgreSQL is initialized before measuring query time
-      await getDatabase()
+      await getDatabase(user.id)
 
       setExecutionPhase('executing')
 
       // Start measuring query execution
       startedAt = performance.now()
 
-      const result = await executeQuery(sql)
+      const result = await executeQuery(user.id, sql)
 
       setQueryResult(result)
 
@@ -168,7 +167,7 @@ function SqlWorkspace({
     setDatasetMessage('')
 
     try {
-      const { employeeCount } = await loadEmployeePracticeDataset()
+      const { employeeCount } = await loadEmployeePracticeDataset(user.id)
 
       await handleRefreshTables()
 
@@ -190,7 +189,7 @@ function SqlWorkspace({
     setSchemaError('')
 
     try {
-      const tableNames = await getDatabaseTables()
+      const tableNames = await getDatabaseTables(user.id)
       setTables(tableNames)
     } catch (error) {
       setSchemaError(
@@ -210,8 +209,8 @@ function SqlWorkspace({
 
     try {
       const [columnDetails, constraintDetails] = await Promise.all([
-        getTableColumns(tableName),
-        getTableConstraints(tableName),
+        getTableColumns(user.id, tableName),
+        getTableConstraints(user.id, tableName),
       ])
 
       setColumns(columnDetails)

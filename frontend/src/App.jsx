@@ -6,6 +6,8 @@ import { supabase } from './lib/supabase'
 
 import './App.css'
 
+import { closeDatabase } from './lib/pglite.js'
+
 const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'
 ).replace(/\/+$/, '')
@@ -126,7 +128,13 @@ function App() {
   async function handleSignOut() {
     setSignOutError('')
     setIsSigningOut(true)
-
+    if (sessionUserId) {
+      try {
+        await closeDatabase(sessionUserId)
+      } catch (closeError) {
+        console.error('Could not close the local SQL workspace:', closeError)
+      }
+    }
     try {
       const { error } = await supabase.auth.signOut({
         scope: 'local', //The sign-out uses scope: 'local', meaning it terminates the current browser session rather than every session belonging to the account.
@@ -229,6 +237,7 @@ function App() {
 
   return (
     <SqlWorkspace
+      key={currentVerification.user.id}
       user={currentVerification.user}
       onSignOut={handleSignOut}
       isSigningOut={isSigningOut}

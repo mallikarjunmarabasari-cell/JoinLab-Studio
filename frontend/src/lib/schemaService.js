@@ -1,10 +1,8 @@
 import { getDatabase } from "./pglite.js";
 
-// information_schema.tables is PostgreSQL's metadata view describing tables accessible through the database.
-
-// Retrieve all user-created tables from the public schema
-export async function getDatabaseTables() {
-  const database = await getDatabase();
+// Retrieve tables from the current user's local database.
+export async function getDatabaseTables(userId) {
+  const database = await getDatabase(userId);
 
   const result = await database.query(`
     SELECT table_name
@@ -17,9 +15,9 @@ export async function getDatabaseTables() {
   return result.rows.map((row) => row.table_name);
 }
 
-// Retrieve column metadata for a selected table
-export async function getTableColumns(tableName) {
-  const database = await getDatabase();
+// Retrieve column metadata for a selected table.
+export async function getTableColumns(userId, tableName) {
+  const database = await getDatabase(userId);
 
   const result = await database.query(
     `
@@ -44,20 +42,18 @@ export async function getTableColumns(tableName) {
   return result.rows;
 }
 
-// Retrieve constraints for a selected table
-export async function getTableConstraints(tableName) {
-  const database = await getDatabase();
+// Retrieve constraints for a selected table.
+export async function getTableConstraints(userId, tableName) {
+  const database = await getDatabase(userId);
 
   const result = await database.query(
     `
       SELECT
         tc.constraint_name,
         tc.constraint_type,
-
         (
           SELECT array_agg(
-            kcu.column_name
-            ORDER BY kcu.ordinal_position
+            kcu.column_name ORDER BY kcu.ordinal_position
           )
           FROM information_schema.key_column_usage kcu
           WHERE kcu.constraint_catalog = tc.constraint_catalog
@@ -66,7 +62,6 @@ export async function getTableConstraints(tableName) {
             AND kcu.table_schema = tc.table_schema
             AND kcu.table_name = tc.table_name
         ) AS columns,
-
         (
           SELECT array_agg(
             ccu.table_name || '.' || ccu.column_name
@@ -76,7 +71,6 @@ export async function getTableConstraints(tableName) {
             AND ccu.constraint_schema = tc.constraint_schema
             AND ccu.constraint_name = tc.constraint_name
         ) AS referenced_columns,
-
         (
           SELECT cc.check_clause
           FROM information_schema.check_constraints cc
@@ -85,7 +79,6 @@ export async function getTableConstraints(tableName) {
             AND cc.constraint_name = tc.constraint_name
           LIMIT 1
         ) AS check_clause
-
       FROM information_schema.table_constraints tc
       WHERE tc.table_schema = 'public'
         AND tc.table_name = $1
@@ -95,9 +88,7 @@ export async function getTableConstraints(tableName) {
   );
 
   return result.rows.filter((constraint) => {
-    if (constraint.constraint_type !== "CHECK") {
-      return true;
-    }
+    if (constraint.constraint_type !== "CHECK") return true;
 
     const clause = (constraint.check_clause ?? "")
       .trim()
@@ -106,9 +97,8 @@ export async function getTableConstraints(tableName) {
       .replace(/\s+/g, " ")
       .toUpperCase();
 
-    // NOT NULL is already represented by column nullability.
     const isNotNullConstraint =
-  /^(?:[A-Z_][A-Z0-9_$]*\.)*[A-Z_][A-Z0-9_$]* IS NOT NULL$/.test(clause)
+      /^(?:[A-Z_][A-Z0-9_$]*\.)*[A-Z_][A-Z0-9_$]* IS NOT NULL$/.test(clause);
 
     return !isNotNullConstraint;
   });
