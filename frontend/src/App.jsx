@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
 
-import SqlWorkspace from './components/SqlWorkspace.jsx'
+import AppLayout from './components/AppLayout.jsx'
+import SqlPlaygroundPage from './pages/SqlPlaygroundPage.jsx'
+import PracticePage from './pages/PracticePage.jsx'
 import AuthScreen from './components/AuthScreen.jsx'
 import { supabase } from './lib/supabase'
 
 import './App.css'
 
 import { closeDatabase } from './lib/pglite.js'
+import { closePracticeDatabasesForUser } from './lib/practiceDatabaseService.js'
 
 const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'
@@ -14,6 +17,7 @@ const API_BASE_URL = (
 
 function App() {
   const [session, setSession] = useState(null)
+  const [activePage, setActivePage] = useState('playground')
   const [isAuthReady, setIsAuthReady] = useState(false)
 
   const [verification, setVerification] = useState(null)
@@ -130,6 +134,12 @@ function App() {
     setIsSigningOut(true)
     if (sessionUserId) {
       try {
+        await closePracticeDatabasesForUser(sessionUserId)
+      } catch (closeError) {
+        console.error('Could not close local Practice databases:', closeError)
+      }
+
+      try {
         await closeDatabase(sessionUserId)
       } catch (closeError) {
         console.error('Could not close the local SQL workspace:', closeError)
@@ -236,13 +246,21 @@ function App() {
   }
 
   return (
-    <SqlWorkspace
+    <AppLayout
       key={currentVerification.user.id}
       user={currentVerification.user}
       onSignOut={handleSignOut}
       isSigningOut={isSigningOut}
       signOutError={signOutError}
-    />
+      activePage={activePage}
+      onNavigate={setActivePage}
+    >
+      {activePage === 'playground' ? (
+        <SqlPlaygroundPage user={currentVerification.user} />
+      ) : (
+        <PracticePage user={currentVerification.user} />
+      )}
+    </AppLayout>
   )
 }
 

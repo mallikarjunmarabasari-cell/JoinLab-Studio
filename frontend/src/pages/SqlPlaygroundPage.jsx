@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 // import { executeQuery } from '../lib/pglite.js'
 import { executeQuery, getDatabase } from '../lib/pglite.js'
-import './SqlWorkspace.css'
+import '../components/SqlPlayground.css'
 
 import CodeMirror from '@uiw/react-codemirror'
 // import { sql, PostgreSQL } from '@codemirror/lang-sql' //eslint error
@@ -97,12 +97,7 @@ function formatColumnType(column) {
   return column.data_type
 }
 
-function SqlWorkspace({
-  user,
-  onSignOut,
-  isSigningOut,
-  signOutError,
-}) {
+function SqlPlaygroundPage({ user }) {
   // SQL editor state
   const [sql, setSql] = useState(
     "SELECT 1 AS result, 'JoinLab PostgreSQL' AS message;"
@@ -421,82 +416,8 @@ function SqlWorkspace({
   }
 
   return (
-    <div className="app-shell">
-
-      {/* Application header */}
-      <header className="topbar">
-        <div className="brand">
-          <div className="brand-mark">JL</div>
-
-          <div>
-            <h1>JoinLab Studio</h1>
-            <p>SQL learning environment</p>
-          </div>
-        </div>
-
-        <div className="topbar-right">
-
-          <div className="connection-status">
-            <span className="status-dot"></span>
-            PostgreSQL · In-browser sandbox
-          </div>
-
-          <div className="account-controls">
-            <div className="account-identity">
-              <span className="account-label">SIGNED IN AS</span>
-              <span className="account-email" title={user?.email || ''}>
-                {user?.email || 'Authenticated user'}
-              </span>
-            </div>
-
-            <button
-              type="button"
-              className="sign-out-button"
-              onClick={onSignOut}
-              disabled={isSigningOut}
-            >
-              {isSigningOut ? 'Signing out...' : 'Sign out'}
-            </button>
-          </div>
-
-        </div>
-        {signOutError && (
-          <p className="sign-out-error" role="alert">
-            Sign-out failed: {signOutError}
-          </p>
-        )}
-      </header>
-
-      <div className="workspace-layout">
-
-        {/* Left navigation */}
-        <aside className="sidebar">
-          <p className="sidebar-heading">WORKSPACE</p>
-
-          <nav aria-label="Workspace navigation">
-            <div className="sidebar-item active">
-              SQL Playground
-            </div>
-
-            <div className="sidebar-item">
-              PostgreSQL Lab
-              <span className="sidebar-tag">SOON</span>
-            </div>
-
-            <div className="sidebar-item">Saved Projects</div>
-          </nav>
-
-          <div className="sidebar-divider"></div>
-
-          <p className="sidebar-heading">LEARNING</p>
-
-          <div className="sidebar-item">Challenges</div>
-          <div className="sidebar-item">Progress</div>
-        </aside>
-
+    <>
         {/* Main workspace */}
-        <main className="main-content">
-
           <section className="page-heading">
             <div>
               <p className="eyebrow">SQL WORKSPACE</p>
@@ -884,10 +805,7 @@ function SqlWorkspace({
             </section>
 
           </section>
-        </main>
-      </div>
-    </div>
+        </>
   )
 }
-
-export default SqlWorkspace
+export default SqlPlaygroundPage

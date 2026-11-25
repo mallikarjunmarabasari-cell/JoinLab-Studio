@@ -778,3 +778,23 @@
     flex: 1;
   }
 }
+
+/* Application sidebar navigation buttons */
+
+.sidebar nav .sidebar-item {
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.sidebar nav button.sidebar-item:hover {
+  color: var(--color-text);
+  background: var(--color-panel-hover);
+}
+
+.sidebar nav button.sidebar-item.active {
+  color: var(--color-accent);
+  background: rgba(56, 189, 248, 0.09);
+  border-color: rgba(56, 189, 248, 0.16);
+}

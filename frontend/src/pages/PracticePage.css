@@ -1,0 +1,401 @@
+
+.practice-page {
+  display: grid;
+  gap: 20px;
+}
+
+.practice-panel,
+.selected-dataset-header,
+.dataset-card {
+  min-width: 0;
+  padding: 20px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+}
+
+.practice-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.practice-panel-heading h3,
+.dataset-card h3,
+.selected-dataset-header h3 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 15px;
+}
+
+.practice-panel-heading p,
+.selected-dataset-header p,
+.dataset-card p {
+  margin: 7px 0 0;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.practice-panel-heading button,
+.practice-back-button,
+.practice-hints button,
+.practice-panel-heading > button {
+  padding: 8px 11px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-panel);
+  color: var(--color-text);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.dataset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+.dataset-card {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.dataset-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dataset-category,
+.dataset-version {
+  color: var(--color-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.7px;
+}
+
+.dataset-tables {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.dataset-tables span {
+  padding: 5px 8px;
+  border-radius: 5px;
+  background: var(--color-panel);
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.practice-primary-button,
+.practice-secondary-button {
+  padding: 9px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.practice-primary-button {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #082f49;
+}
+
+.practice-secondary-button {
+  background: var(--color-panel);
+  color: var(--color-text);
+}
+
+.practice-primary-button:disabled,
+.practice-secondary-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.practice-back-button {
+  justify-self: start;
+}
+
+.selected-dataset-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+}
+
+.selected-dataset-header h3 {
+  margin-top: 7px;
+  font-size: 20px;
+}
+
+.selected-dataset-header .dataset-version {
+  display: inline-block;
+  margin-top: 12px;
+}
+
+.dataset-load-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.practice-workspace {
+  display: grid;
+  grid-template-columns: minmax(235px, 0.7fr) minmax(0, 1.8fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.practice-navigator {
+  position: sticky;
+  top: 16px;
+}
+
+.practice-list {
+  display: grid;
+  gap: 6px;
+}
+
+.practice-list-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.practice-list-item:hover,
+.practice-list-item.active {
+  background: var(--color-panel-hover);
+  border-color: var(--color-border);
+}
+
+.practice-list-number {
+  flex-shrink: 0;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.practice-list-copy {
+  display: grid;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.practice-list-copy strong {
+  overflow: hidden;
+  color: var(--color-text);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.practice-list-copy small {
+  color: var(--color-subtle);
+  font-size: 10px;
+}
+
+.difficulty-tag {
+  flex-shrink: 0;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: var(--color-panel);
+  color: var(--color-muted);
+  font-size: 9px;
+  text-transform: capitalize;
+}
+
+.difficulty-tag.easy {
+  color: var(--color-success);
+}
+
+.difficulty-tag.medium {
+  color: var(--color-accent);
+}
+
+.difficulty-tag.hard {
+  color: var(--color-danger);
+}
+
+.practice-progress-track {
+  height: 5px;
+  margin-bottom: 16px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--color-panel-hover);
+}
+
+.practice-progress-track > div {
+  height: 100%;
+  background: var(--color-success);
+  transition: width 0.2s ease;
+}
+
+.practice-main-column {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.practice-instructions > p {
+  color: var(--color-text);
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.practice-hints {
+  margin-top: 15px;
+}
+
+.practice-hints ol {
+  display: grid;
+  gap: 8px;
+  padding-left: 20px;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.practice-code-editor {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+}
+
+.practice-code-editor .cm-editor {
+  min-height: 250px;
+  font-size: 13px;
+}
+
+.practice-code-editor .cm-focused {
+  outline: 1px solid var(--color-accent);
+}
+
+.practice-editor-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.practice-editor-toolbar > span {
+  color: var(--color-muted);
+  font-size: 11px;
+}
+
+.practice-editor-panel .practice-panel-heading {
+  margin-bottom: 14px;
+}
+
+.database-ready {
+  color: var(--color-success);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.practice-table-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.practice-table-list button {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 11px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-panel);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.practice-completion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 15px 18px;
+  border-top: 1px solid var(--color-border);
+}
+
+.practice-completion > span {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.practice-empty {
+  color: var(--color-subtle);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.practice-error,
+.practice-success {
+  padding: 11px 13px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.practice-error {
+  color: var(--color-danger);
+  background: var(--color-panel);
+}
+
+.practice-success {
+  color: var(--color-success);
+  background: var(--color-panel);
+}
+
+@media (max-width: 900px) {
+  .practice-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .practice-navigator {
+    position: static;
+  }
+}
+
+@media (max-width: 600px) {
+  .selected-dataset-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .dataset-load-actions {
+    width: 100%;
+  }
+
+  .dataset-load-actions button {
+    flex: 1;
+  }
+
+  .practice-completion {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
