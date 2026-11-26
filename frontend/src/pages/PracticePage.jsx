@@ -11,6 +11,7 @@ import {
 } from '../lib/learningContentService.js'
 
 import {
+    DatasetVersionMismatchError,
     openPracticeDatabase,
     executePracticeQuery,
     getPracticeTables,
@@ -58,6 +59,8 @@ function PracticePage({ user }) {
     const activePracticeItem = practiceItems.find(
         (practice) => practice.id === activePracticeItemId
     )
+
+    const [datasetVersionMismatch, setDatasetVersionMismatch] = useState(null)
 
     async function loadDatasets() {
         setIsLoadingDatasets(true)
@@ -116,6 +119,7 @@ function PracticePage({ user }) {
         setPracticeFeedback('')
         setValidationPassed(null)
         setIsLoadingPracticeItems(true)
+        setDatasetVersionMismatch(null)
 
         try {
             const practiceItemList = await getPublishedPracticeItems(dataset.id)
@@ -147,6 +151,7 @@ function PracticePage({ user }) {
         setIsOpeningDataset(true)
         setWorkspaceError('')
         setWorkspaceMessage('')
+        setDatasetVersionMismatch(null)
 
         try {
             const dataset = await getPublishedDataset(selectedDataset.slug)
@@ -167,19 +172,27 @@ function PracticePage({ user }) {
                 setSql(practiceItems[0].starter_sql)
             }
         } catch (error) {
-            setWorkspaceError(
-                error instanceof Error ? error.message : String(error)
-            )
+            if (error instanceof DatasetVersionMismatchError) {
+                setDatasetVersionMismatch({
+                    storedVersion: error.storedVersion,
+                    publishedVersion: error.publishedVersion,
+                })
+            } else {
+                setWorkspaceError(
+                    error instanceof Error ? error.message : String(error)
+                )
+            }
         } finally {
             setIsOpeningDataset(false)
         }
     }
 
+
     async function handleResetDataset() {
-        if (!selectedDataset || !activeDataset) return
+        if (!selectedDataset || (!activeDataset && !datasetVersionMismatch)) return
 
         const confirmed = window.confirm(
-            'Reset this dataset to its original published version? All changes, inserted records and custom tables in this dataset workspace will be lost. Your general SQL Playground and cloud practice progress will remain unchanged.'
+            'Reset this dataset to its latest published version? All changes, inserted records and custom tables in this dataset workspace will be lost. Your general SQL Playground and cloud practice progress will remain unchanged.'
         )
 
         if (!confirmed) return
@@ -189,24 +202,74 @@ function PracticePage({ user }) {
         setWorkspaceMessage('')
 
         try {
+            // Fetch the latest published content before making destructive changes.
             const latestDataset = await getPublishedDataset(selectedDataset.slug)
 
+            const latestPracticeItems = await getPublishedPracticeItems(
+                latestDataset.id
+            )
+
+            // Load progress belonging to this exact dataset version.
+            const latestProgressList = await getUserPracticeProgress(
+                latestDataset.version,
+                latestPracticeItems.map((practice) => practice.id)
+            )
+
+            const latestProgressMap = Object.fromEntries(
+                latestProgressList.map((item) => [
+                    item.practice_item_id,
+                    item,
+                ])
+            )
+
+            // Only reset the local database after content and progress are available.
             const result = await resetPracticeDatabase(
                 user.id,
                 latestDataset
             )
 
+            const firstPracticeItem = latestPracticeItems[0] ?? null
+
+            const updatedDatasetSummary = {
+                id: latestDataset.id,
+                slug: latestDataset.slug,
+                name: latestDataset.name,
+                description: latestDataset.description,
+                expected_tables: latestDataset.expected_tables,
+                version: latestDataset.version,
+            }
+
+            // Synchronize the dataset selector and active workspace.
+            setDatasets((current) =>
+                current.map((dataset) =>
+                    dataset.slug === latestDataset.slug
+                        ? updatedDatasetSummary
+                        : dataset
+                )
+            )
+
+            setSelectedDataset(updatedDatasetSummary)
             setActiveDataset(latestDataset)
+
+            // Synchronize exercises and version-specific cloud progress.
+            setPracticeItems(latestPracticeItems)
+            setProgress(latestProgressMap)
+            setActivePracticeItemId(firstPracticeItem?.id ?? null)
+
+            // Synchronize the local database explorer and SQL editor.
             setTables(result.tables)
+            setSql(firstPracticeItem?.starter_sql ?? '')
+
+            // Clear stale results and validation feedback.
             setQueryResult(null)
             setQueryError('')
             setPracticeFeedback('')
             setValidationPassed(null)
-
-            setSql(activePracticeItem?.starter_sql || 'SELECT * FROM employees;')
+            setShowHints(false)
+            setDatasetVersionMismatch(null)
 
             setWorkspaceMessage(
-                `Dataset restored to its original version ${result.version}.`
+                `Dataset updated to published version ${result.version}. Practice items and progress have been synchronized.`
             )
         } catch (error) {
             setWorkspaceError(
@@ -216,6 +279,7 @@ function PracticePage({ user }) {
             setIsResettingDataset(false)
         }
     }
+
 
     function handleSqlChange(nextSql) {
         setSql(nextSql)
@@ -336,6 +400,7 @@ function PracticePage({ user }) {
         setQueryError('')
         setPracticeFeedback('')
         setValidationPassed(null)
+        setDatasetVersionMismatch(null)
     }
 
     const completedCount = practiceItems.filter(
@@ -482,6 +547,50 @@ function PracticePage({ user }) {
                         <p className="practice-success" role="status">
                             {workspaceMessage}
                         </p>
+                    )}
+                    {datasetVersionMismatch && (
+                        <section className="practice-panel">
+                            <div className="practice-panel-heading">
+                                <div>
+                                    <h3>Dataset update available</h3>
+                                    <p>
+                                        Your saved workspace uses version{' '}
+                                        <strong>{datasetVersionMismatch.storedVersion}</strong>,
+                                        but version{' '}
+                                        <strong>{datasetVersionMismatch.publishedVersion}</strong>
+                                        {' '}is now published.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <p>
+                                Your existing local SQL changes have been preserved.
+                                Resetting will replace only this dataset's local workspace.
+                                Your cloud progress remains unchanged.
+                            </p>
+
+                            <div className="dataset-load-actions">
+                                <button
+                                    type="button"
+                                    className="practice-primary-button"
+                                    onClick={handleResetDataset}
+                                    disabled={isResettingDataset}
+                                >
+                                    {isResettingDataset
+                                        ? 'Updating...'
+                                        : `Reset to version ${datasetVersionMismatch.publishedVersion}`}
+                                </button>
+
+                                <button
+                                    type="button"
+                                    className="practice-secondary-button"
+                                    onClick={() => setDatasetVersionMismatch(null)}
+                                    disabled={isResettingDataset}
+                                >
+                                    Not now
+                                </button>
+                            </div>
+                        </section>
                     )}
 
                     {isLoadingPracticeItems ? (
@@ -651,19 +760,19 @@ function PracticePage({ user }) {
                                             )}
 
                                             {practiceFeedback && (
-    <p
-        className={
-            validationPassed === true
-                ? 'practice-success'
-                : validationPassed === false
-                    ? 'practice-error'
-                    : 'practice-empty'
-        }
-        role="status"
-    >
-        {practiceFeedback}
-    </p>
-)}
+                                                <p
+                                                    className={
+                                                        validationPassed === true
+                                                            ? 'practice-success'
+                                                            : validationPassed === false
+                                                                ? 'practice-error'
+                                                                : 'practice-empty'
+                                                    }
+                                                    role="status"
+                                                >
+                                                    {practiceFeedback}
+                                                </p>
+                                            )}
 
                                             {queryResult && (
                                                 <>
@@ -764,19 +873,19 @@ function PracticePage({ user }) {
                                             )}
                                         </section>
 
-                                                                                {activePracticeItem && (
-    <div className="practice-completion">
-        <span>
-            {progress[activePracticeItem.id]?.status === 'completed'
-                ? 'Practice completed. Progress saved.'
-                : isSavingProgress
-                    ? 'Correct answer. Saving progress...'
-                    : validationPassed === true
-                        ? 'Correct answer verified. Progress saving may need attention.'
-                        : 'Your answer is checked automatically when you run your SQL.'}
-        </span>
-    </div>
-)}
+                                        {activePracticeItem && (
+                                            <div className="practice-completion">
+                                                <span>
+                                                    {progress[activePracticeItem.id]?.status === 'completed'
+                                                        ? 'Practice completed. Progress saved.'
+                                                        : isSavingProgress
+                                                            ? 'Correct answer. Saving progress...'
+                                                            : validationPassed === true
+                                                                ? 'Correct answer verified. Progress saving may need attention.'
+                                                                : 'Your answer is checked automatically when you run your SQL.'}
+                                                </span>
+                                            </div>
+                                        )}
                                     </>
                                 )}
                             </div>
