@@ -1,85 +1,89 @@
 import { supabase } from './supabase.js'
 
-const DATASET_TABLE = 'learning_datasets'
-const PRACTICE_ITEMS_TABLE = 'practice_items'
-const PRACTICE_PROGRESS_TABLE = 'user_practice_progress'
+import {
+    getLocalDatasets,
+    getLocalDataset,
+    getLocalPracticeItems,
+} from '../content/datasets/index.js'
 
+const PRACTICE_PROGRESS_TABLE = 'user_practice_progress_v2'
+
+// Dataset definitions are bundled with the frontend.
 export async function getPublishedDatasets() {
-  const { data, error } = await supabase
-    .from(DATASET_TABLE)
-    .select('id, slug, name, description, expected_tables, version')
-    .eq('is_published', true)
-    .order('name')
-
-  if (error) throw new Error(error.message)
-
-  return data ?? []
+    return getLocalDatasets()
 }
 
 export async function getPublishedDataset(slug) {
-  const { data, error } = await supabase
-    .from(DATASET_TABLE)
-    .select('id, slug, name, description, dataset_sql, expected_tables, version')
-    .eq('slug', slug)
-    .eq('is_published', true)
-    .maybeSingle()
+    const dataset = getLocalDataset(slug)
 
-  if (error) throw new Error(error.message)
-  if (!data) throw new Error('This dataset is unavailable or unpublished.')
+    if (!dataset) {
+        throw new Error('This local dataset is unavailable.')
+    }
 
-  return data
+    return dataset
 }
 
-export async function getPublishedPracticeItems(datasetId) {
-  const { data, error } = await supabase
-    .from(PRACTICE_ITEMS_TABLE)
-    .select(
-      'id, dataset_id, slug, title, prompt, topic, difficulty, starter_sql, hints, points, sort_order'
-    )
-    .eq('dataset_id', datasetId)
-    .eq('is_published', true)
-    .order('sort_order')
+export async function getPublishedPracticeItems(datasetSlug) {
+    const dataset = getLocalDataset(datasetSlug)
 
-  if (error) throw new Error(error.message)
+    if (!dataset) {
+        throw new Error('This local dataset is unavailable.')
+    }
 
-  return data ?? []
+    return getLocalPracticeItems(datasetSlug)
 }
 
-export async function getUserPracticeProgress(datasetVersion, practiceIds) {
-  if (!practiceIds.length) return []
+// Learner progress remains synchronized through Supabase.
+export async function getUserPracticeProgress(
+    datasetSlug,
+    datasetVersion,
+    practiceSlugs
+) {
+    if (!practiceSlugs.length) return []
 
-  const { data, error } = await supabase
-    .from(PRACTICE_PROGRESS_TABLE)
-    .select('practice_item_id, dataset_version, status, attempts, completed_at')
-    .eq('dataset_version', datasetVersion)
-    .in('practice_item_id', practiceIds)
+    const { data, error } = await supabase
+        .from(PRACTICE_PROGRESS_TABLE)
+        .select(
+            'dataset_slug, practice_slug, dataset_version, status, attempts, completed_at'
+        )
+        .eq('dataset_slug', datasetSlug)
+        .eq('dataset_version', datasetVersion)
+        .in('practice_slug', practiceSlugs)
 
-  if (error) throw new Error(error.message)
+    if (error) throw new Error(error.message)
 
-  return data ?? []
+    return data ?? []
 }
 
-export async function markPracticeCompleted(practiceId, datasetVersion) {
-  const timestamp = new Date().toISOString()
+export async function markPracticeCompleted(
+    datasetSlug,
+    practiceSlug,
+    datasetVersion
+) {
+    const timestamp = new Date().toISOString()
 
-  const { data, error } = await supabase
-    .from(PRACTICE_PROGRESS_TABLE)
-    .upsert(
-      {
-        practice_item_id: practiceId,
-        dataset_version: datasetVersion,
-        status: 'completed',
-        completed_at: timestamp,
-        updated_at: timestamp,
-      },
-      {
-        onConflict: 'user_id,practice_item_id,dataset_version',
-      }
-    )
-    .select('practice_item_id, dataset_version, status, completed_at')
-    .single()
+    const { data, error } = await supabase
+        .from(PRACTICE_PROGRESS_TABLE)
+        .upsert(
+            {
+                dataset_slug: datasetSlug,
+                practice_slug: practiceSlug,
+                dataset_version: datasetVersion,
+                status: 'completed',
+                completed_at: timestamp,
+                updated_at: timestamp,
+            },
+            {
+                onConflict:
+                    'user_id,dataset_slug,practice_slug,dataset_version',
+            }
+        )
+        .select(
+            'dataset_slug, practice_slug, dataset_version, status, attempts, completed_at'
+        )
+        .single()
 
-  if (error) throw new Error(error.message)
+    if (error) throw new Error(error.message)
 
-  return data
+    return data
 }

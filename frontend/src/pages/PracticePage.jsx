@@ -122,15 +122,16 @@ function PracticePage({ user }) {
         setDatasetVersionMismatch(null)
 
         try {
-            const practiceItemList = await getPublishedPracticeItems(dataset.id)
+            const practiceItemList = await getPublishedPracticeItems(dataset.slug)
 
             const progressList = await getUserPracticeProgress(
+                dataset.slug,
                 dataset.version,
-                practiceItemList.map((practice) => practice.id)
+                practiceItemList.map((practice) => practice.slug)
             )
 
             const progressMap = Object.fromEntries(
-                progressList.map((item) => [item.practice_item_id, item])
+                progressList.map((item) => [item.practice_slug, item])
             )
 
             setPracticeItems(practiceItemList)
@@ -206,18 +207,19 @@ function PracticePage({ user }) {
             const latestDataset = await getPublishedDataset(selectedDataset.slug)
 
             const latestPracticeItems = await getPublishedPracticeItems(
-                latestDataset.id
+                latestDataset.slug
             )
 
             // Load progress belonging to this exact dataset version.
             const latestProgressList = await getUserPracticeProgress(
+                latestDataset.slug,
                 latestDataset.version,
-                latestPracticeItems.map((practice) => practice.id)
+                latestPracticeItems.map((practice) => practice.slug)
             )
 
             const latestProgressMap = Object.fromEntries(
                 latestProgressList.map((item) => [
-                    item.practice_item_id,
+                    item.practice_slug,
                     item,
                 ])
             )
@@ -342,19 +344,20 @@ function PracticePage({ user }) {
 
             if (
                 validation.passed &&
-                progress[activePracticeItem.id]?.status !== 'completed'
+                progress[activePracticeItem.slug]?.status !== 'completed'
             ) {
                 setIsSavingProgress(true)
 
                 try {
                     const completed = await markPracticeCompleted(
-                        activePracticeItem.id,
+                        activeDataset.slug,
+                        activePracticeItem.slug,
                         activeDataset.version
                     )
 
                     setProgress((current) => ({
                         ...current,
-                        [completed.practice_item_id]: completed,
+                        [completed.practice_slug]: completed,
                     }))
 
                     setWorkspaceMessage(
@@ -876,7 +879,7 @@ function PracticePage({ user }) {
                                         {activePracticeItem && (
                                             <div className="practice-completion">
                                                 <span>
-                                                    {progress[activePracticeItem.id]?.status === 'completed'
+                                                    {progress[activePracticeItem.slug]?.status === 'completed'
                                                         ? 'Practice completed. Progress saved.'
                                                         : isSavingProgress
                                                             ? 'Correct answer. Saving progress...'
